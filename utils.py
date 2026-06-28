@@ -14,6 +14,7 @@ the functions return None or a friendly "N/A" instead of crashing.
 """
 
 import math
+import os
 import time
 import datetime as dt
 
