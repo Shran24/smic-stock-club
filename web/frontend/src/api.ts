@@ -53,3 +53,13 @@ export const fetchPortfolio = () => getJSON<Portfolio>("/api/portfolio");
 export const trade = (side: "buy" | "sell", ticker: string, shares: number) =>
   postJSON<Portfolio>("/api/trade", { side, ticker, shares });
 export const fetchLeaderboard = () => getJSON<LeaderRow[]>("/api/leaderboard");
+
+// Admin only — remove a player and their data.
+export async function deleteUser(name: string): Promise<{ removed: string }> {
+  const res = await fetch(`/api/admin/users/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await errorDetail(res));
+  return res.json();
+}

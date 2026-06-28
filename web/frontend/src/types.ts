@@ -76,6 +76,7 @@ export interface Me {
   authenticated: boolean;
   name?: string;
   cash?: number;
+  isAdmin?: boolean;
 }
 
 export interface PortfolioHolding {

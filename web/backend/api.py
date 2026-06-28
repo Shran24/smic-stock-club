@@ -43,7 +43,9 @@ import recommender    # noqa: E402
 from db import Base, engine, get_db          # noqa: E402
 import models                                # noqa: E402,F401  (registers tables)
 import game                                  # noqa: E402
-from auth import router as auth_router, current_user  # noqa: E402
+from auth import router as auth_router, current_user, is_admin  # noqa: E402
+from models import User, Holding, Transaction  # noqa: E402
+from sqlalchemy import func                   # noqa: E402
 
 
 app = FastAPI(title="Stock Market Club API", version="1.0.0")
@@ -291,7 +293,24 @@ def api_me(user=Depends(current_user)):
     """Who's logged in."""
     if not user:
         return {"authenticated": False}
-    return {"authenticated": True, "name": user.name, "cash": user.cash}
+    return {"authenticated": True, "name": user.name, "cash": user.cash, "isAdmin": is_admin(user)}
+
+
+@app.delete("/api/admin/users/{name}")
+def api_admin_delete_user(name: str, user=Depends(current_user), db: Session = Depends(get_db)):
+    """Admin-only: remove a player and all their data (duplicates, trolls, etc.)."""
+    if not is_admin(user):
+        raise HTTPException(403, "Admin only.")
+    target = db.query(User).filter(func.lower(User.name) == name.strip().lower()).first()
+    if not target:
+        raise HTTPException(404, "Player not found.")
+    if target.id == user.id:
+        raise HTTPException(400, "You can't remove your own admin account.")
+    db.query(Transaction).filter_by(user_id=target.id).delete()
+    db.query(Holding).filter_by(user_id=target.id).delete()
+    db.delete(target)
+    db.commit()
+    return {"removed": target.name}
 
 
 @app.get("/api/portfolio")

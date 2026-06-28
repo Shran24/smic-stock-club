@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchLeaderboard } from "../api";
+import { fetchLeaderboard, deleteUser } from "../api";
 import { useAuth } from "../AuthContext";
 import type { LeaderRow } from "../types";
 import { fmtCurrency } from "../format";
@@ -11,11 +11,20 @@ export default function Leaderboard() {
   const { me } = useAuth();
   const [rows, setRows] = useState<LeaderRow[] | null>(null);
 
+  const load = () => fetchLeaderboard().then(setRows).catch(() => setRows([]));
   useEffect(() => {
-    fetchLeaderboard()
-      .then(setRows)
-      .catch(() => setRows([]));
+    load();
   }, []);
+
+  const remove = async (name: string) => {
+    if (!window.confirm(`Remove "${name}" from the game? This permanently deletes their account and holdings.`)) return;
+    try {
+      await deleteUser(name);
+      await load();
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Could not remove player.");
+    }
+  };
 
   if (!rows) return <div className="card p-8 text-center text-ink-muted">Loading leaderboard…</div>;
 
@@ -33,6 +42,7 @@ export default function Leaderboard() {
                 <th className="p-4">Player</th>
                 <th className="p-4">Total Value</th>
                 <th className="p-4">Return</th>
+                {me?.isAdmin && <th className="p-4 text-right">Admin</th>}
               </tr>
             </thead>
             <tbody>
@@ -52,6 +62,18 @@ export default function Leaderboard() {
                       {r.returnPct >= 0 ? "+" : ""}
                       {r.returnPct.toFixed(2)}%
                     </td>
+                    {me?.isAdmin && (
+                      <td className="p-4 text-right">
+                        {!isMe && (
+                          <button
+                            onClick={() => remove(r.name)}
+                            className="cursor-pointer rounded-lg border border-neg/40 px-3 py-1 text-xs font-bold text-neg transition hover:bg-neg/10"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })}

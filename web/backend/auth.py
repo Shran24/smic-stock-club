@@ -25,6 +25,13 @@ from models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# Admin usernames come from the ADMIN_USERS env var (comma-separated).
+ADMIN_USERS = {u.strip().lower() for u in os.environ.get("ADMIN_USERS", "").split(",") if u.strip()}
+
+
+def is_admin(user) -> bool:
+    return bool(user) and (user.name or "").lower() in ADMIN_USERS
+
 
 class AuthIn(BaseModel):
     username: str
