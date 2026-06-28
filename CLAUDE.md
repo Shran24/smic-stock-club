@@ -45,6 +45,7 @@ with `--reload`; vite proxies `/api` to :8000.
 | `SESSION_SECRET` | Signs login cookies. Required in prod. |
 | `SESSION_HTTPS` | `1` in prod (secure cookies over https). |
 | `ADMIN_USERS` | Comma-separated usernames who get admin powers (Remove / Reset PW). Currently `Shaan Patel`. |
+| `FINNHUB_API_KEY` | Fundamentals source. Yahoo blocks `.info` from cloud IPs, so `utils.fundamentals_from_finnhub` fills P/E, EPS, margins, etc. from Finnhub (mapped to yfinance keys/units). Price/charts still come from yfinance `history()`. |
 | `ALLOW_DEV_LOGIN` | LOCAL ONLY. `1` enables `/auth/dev-login` for testing. Never set in prod. |
 
 ## API (all under `/api`, plus `/auth`)

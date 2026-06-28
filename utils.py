@@ -68,6 +68,81 @@ def _make_ticker(ticker: str):
     return yf.Ticker(ticker)
 
 
+# --- Fundamentals fallback via Finnhub --------------------------------------
+# Yahoo blocks company "info" from cloud IPs, so when FINNHUB_API_KEY is set we
+# pull fundamentals from Finnhub and map them into the SAME keys/units yfinance
+# uses, so the rest of the app (recommender, API) needs no changes.
+import json as _json
+import urllib.request as _urlreq
+
+_FINNHUB_KEY = os.environ.get("FINNHUB_API_KEY")
+
+
+def _finnhub(path: str):
+    url = f"https://finnhub.io/api/v1/{path}&token={_FINNHUB_KEY}"
+    with _urlreq.urlopen(url, timeout=10) as resp:
+        return _json.loads(resp.read())
+
+
+def fundamentals_from_finnhub(ticker: str) -> dict:
+    """Return a yfinance-style 'info' dict from Finnhub, or {} if unavailable."""
+    if not _FINNHUB_KEY:
+        return {}
+    out = {}
+    try:
+        p = _finnhub(f"stock/profile2?symbol={ticker}")
+        if p.get("marketCapitalization"):
+            out["marketCap"] = p["marketCapitalization"] * 1e6  # Finnhub reports millions
+        if p.get("name"):
+            out["longName"] = p["name"]
+        if p.get("finnhubIndustry"):
+            out["industry"] = p["finnhubIndustry"]
+            out["sector"] = p["finnhubIndustry"]
+        if p.get("weburl"):
+            out["website"] = p["weburl"]
+        if p.get("exchange"):
+            out["exchange"] = p["exchange"]
+    except Exception:
+        pass
+    try:
+        m = _finnhub(f"stock/metric?symbol={ticker}&metric=all").get("metric", {})
+
+        def g(*keys):
+            for k in keys:
+                v = m.get(k)
+                if v is not None:
+                    return v
+            return None
+
+        # ratios/values that match yfinance units directly
+        out["trailingPE"] = g("peTTM", "peExclExtraTTM")
+        out["trailingEps"] = g("epsTTM", "epsInclExtraItemsTTM", "epsBasicExclExtraItemsTTM")
+        out["beta"] = g("beta")
+        out["fiftyTwoWeekHigh"] = g("52WeekHigh")
+        out["fiftyTwoWeekLow"] = g("52WeekLow")
+        # Finnhub gives these as PERCENTS; yfinance uses fractions -> /100
+        rg = g("revenueGrowthTTMYoy")
+        if rg is not None:
+            out["revenueGrowth"] = rg / 100.0
+        pm = g("netProfitMarginTTM")
+        if pm is not None:
+            out["profitMargins"] = pm / 100.0
+        roe = g("roeTTM")
+        if roe is not None:
+            out["returnOnEquity"] = roe / 100.0
+        dy = g("dividendYieldIndicatedAnnual", "currentDividendYieldTTM")
+        if dy is not None:
+            out["dividendYield"] = dy / 100.0
+        # Finnhub gives debt/equity as a ratio (1.5); yfinance uses 150 -> *100
+        dte = g("totalDebt/totalEquityQuarterly", "totalDebt/totalEquityAnnual")
+        if dte is not None:
+            out["debtToEquity"] = dte * 100.0
+    except Exception:
+        pass
+
+    return {k: v for k, v in out.items() if v is not None}
+
+
 @_ttl_cache
 def fetch_stock(ticker: str):
     """
@@ -108,6 +183,13 @@ def fetch_stock(ticker: str):
             if info.get("marketCap") is not None or info.get("trailingPE") is not None or info.get("shortName"):
                 break
             stock = _make_ticker(ticker)  # fresh attempt
+
+        # If Yahoo blocked the fundamentals (common on cloud IPs), fill them in
+        # from Finnhub. yfinance values win where present; Finnhub fills gaps.
+        if not info.get("marketCap"):
+            fh = fundamentals_from_finnhub(ticker)
+            if fh:
+                info = {**fh, **info}
 
         # A ticker is only "valid" if we actually got price history back.
         if history is None or history.empty:
