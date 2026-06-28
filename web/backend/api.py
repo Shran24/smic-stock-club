@@ -43,7 +43,7 @@ import recommender    # noqa: E402
 from db import Base, engine, get_db          # noqa: E402
 import models                                # noqa: E402,F401  (registers tables)
 import game                                  # noqa: E402
-from auth import router as auth_router, current_user, is_admin  # noqa: E402
+from auth import router as auth_router, current_user, is_admin, hash_password  # noqa: E402
 from models import User, Holding, Transaction  # noqa: E402
 from sqlalchemy import func                   # noqa: E402
 
@@ -311,6 +311,25 @@ def api_admin_delete_user(name: str, user=Depends(current_user), db: Session = D
     db.delete(target)
     db.commit()
     return {"removed": target.name}
+
+
+class ResetIn(BaseModel):
+    password: str
+
+
+@app.post("/api/admin/users/{name}/reset-password")
+def api_admin_reset_password(name: str, body: ResetIn, user=Depends(current_user), db: Session = Depends(get_db)):
+    """Admin-only: set a new password for a player who forgot theirs."""
+    if not is_admin(user):
+        raise HTTPException(403, "Admin only.")
+    if len(body.password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters.")
+    target = db.query(User).filter(func.lower(User.name) == name.strip().lower()).first()
+    if not target:
+        raise HTTPException(404, "Player not found.")
+    target.password_hash = hash_password(body.password)
+    db.commit()
+    return {"reset": target.name}
 
 
 @app.get("/api/portfolio")

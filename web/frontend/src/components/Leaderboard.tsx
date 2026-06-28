@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchLeaderboard, deleteUser } from "../api";
+import { fetchLeaderboard, deleteUser, resetPassword } from "../api";
 import { useAuth } from "../AuthContext";
 import type { LeaderRow } from "../types";
 import { fmtCurrency } from "../format";
@@ -23,6 +23,21 @@ export default function Leaderboard() {
       await load();
     } catch (e) {
       window.alert(e instanceof Error ? e.message : "Could not remove player.");
+    }
+  };
+
+  const resetPw = async (name: string) => {
+    const pw = window.prompt(`Set a NEW password for "${name}" (at least 6 characters). Share it with them privately so they can log in:`);
+    if (!pw) return;
+    if (pw.length < 6) {
+      window.alert("Password must be at least 6 characters.");
+      return;
+    }
+    try {
+      await resetPassword(name, pw);
+      window.alert(`Password for "${name}" was reset. Give them the new password.`);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Could not reset password.");
     }
   };
 
@@ -65,12 +80,20 @@ export default function Leaderboard() {
                     {me?.isAdmin && (
                       <td className="p-4 text-right">
                         {!isMe && (
-                          <button
-                            onClick={() => remove(r.name)}
-                            className="cursor-pointer rounded-lg border border-neg/40 px-3 py-1 text-xs font-bold text-neg transition hover:bg-neg/10"
-                          >
-                            Remove
-                          </button>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => resetPw(r.name)}
+                              className="cursor-pointer rounded-lg border border-line px-3 py-1 text-xs font-bold text-ink-muted transition hover:text-ink"
+                            >
+                              Reset PW
+                            </button>
+                            <button
+                              onClick={() => remove(r.name)}
+                              className="cursor-pointer rounded-lg border border-neg/40 px-3 py-1 text-xs font-bold text-neg transition hover:bg-neg/10"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         )}
                       </td>
                     )}

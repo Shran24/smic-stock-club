@@ -50,12 +50,12 @@ export default function LoginModal({
           Stock Market Club trading game · everyone starts with $100,000.
         </p>
 
-        <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-ink-muted">Username</label>
+        <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-ink-muted">Full name</label>
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           className="mb-3 w-full rounded-xl border border-line bg-panel px-3 py-2.5 text-ink outline-none focus:border-forest-500 focus:ring-2 focus:ring-forest-500/20"
-          placeholder="e.g. ari_g"
+          placeholder="Enter your full name"
         />
         <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-ink-muted">Password</label>
         <input

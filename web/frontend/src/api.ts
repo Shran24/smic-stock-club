@@ -63,3 +63,7 @@ export async function deleteUser(name: string): Promise<{ removed: string }> {
   if (!res.ok) throw new Error(await errorDetail(res));
   return res.json();
 }
+
+// Admin only — reset a player's password (for forgotten logins).
+export const resetPassword = (name: string, password: string) =>
+  postJSON<{ reset: string }>(`/api/admin/users/${encodeURIComponent(name)}/reset-password`, { password });
