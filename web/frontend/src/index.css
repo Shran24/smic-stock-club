@@ -1,0 +1,222 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light theme (default) — values match the original palette exactly. */
+  :root {
+    color-scheme: light;
+    --bg: 247 243 234;
+    --surface: 255 255 255;
+    --panel: 251 248 241;
+    --cream-100: 243 238 222;
+    --cream-200: 233 226 207;
+    --ink: 32 41 31;
+    --ink-soft: 58 70 58;
+    --ink-muted: 112 122 110;
+    --line: 231 224 208;
+    --forest-tint: 231 240 232;
+    --gold-100: 245 236 212;
+    --gold-200: 236 220 176;
+  }
+
+  /* Dark theme (opt-in via .dark on <html>) — green/gold dark variant. */
+  html.dark {
+    color-scheme: dark;
+    --bg: 14 19 14;
+    --surface: 24 30 24;
+    --panel: 30 37 30;
+    --cream-100: 34 42 34;
+    --cream-200: 44 54 45;
+    --ink: 232 236 230;
+    --ink-soft: 198 205 196;
+    --ink-muted: 178 186 175;
+    --line: 42 51 43;
+    --forest-tint: 30 56 39;
+    --gold-100: 42 36 16;
+    --gold-200: 74 63 28;
+  }
+
+  body {
+    /* Solid base; the animated aurora layer provides the moving color. */
+    @apply bg-cream text-ink font-sans antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Tabular figures so financial numbers align cleanly */
+  .num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.2px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl2 border border-line bg-surface shadow-card;
+  }
+  .chip {
+    @apply rounded-full border border-line bg-panel px-2.5 py-0.5 text-xs font-semibold text-ink-muted;
+  }
+}
+
+/* ---- Animated aurora background (subtle drifting + breathing blobs) ---- */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  /* No blur() filter: the radial gradients are already soft, and animating a
+     large blur is very expensive (re-rasterized every frame -> jank). We only
+     animate transform/opacity, which the GPU composites cheaply. */
+  will-change: transform, opacity;
+}
+/* Top-right blob — gold (matches the bottom blob) so it doesn't tint the
+   white cards/search box with green. */
+.aurora-gold-top {
+  width: 48vw;
+  height: 48vw;
+  top: -14vw;
+  right: -8vw;
+  background: radial-gradient(circle at center, rgba(194, 153, 47, 0.30), rgba(194, 153, 47, 0) 70%);
+  animation: drift-a 13s ease-in-out infinite, breathe 7s ease-in-out infinite;
+}
+.aurora-gold {
+  width: 44vw;
+  height: 44vw;
+  bottom: -16vw;
+  left: -10vw;
+  background: radial-gradient(circle at center, rgba(194, 153, 47, 0.30), rgba(194, 153, 47, 0) 70%);
+  animation: drift-b 16s ease-in-out infinite, breathe 9s ease-in-out infinite;
+}
+.aurora-deep {
+  width: 40vw;
+  height: 40vw;
+  top: 34%;
+  left: 38%;
+  background: radial-gradient(circle at center, rgba(23, 58, 35, 0.18), rgba(23, 58, 35, 0) 70%);
+  animation: drift-c 15s ease-in-out infinite, breathe 8s ease-in-out infinite;
+}
+
+/* Multi-point wander paths so each blob roams a loop (never looks static). */
+@keyframes drift-a {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  25%  { transform: translate3d(-22%, 16%, 0) scale(1.18); }
+  50%  { transform: translate3d(10%, 30%, 0) scale(0.92); }
+  75%  { transform: translate3d(26%, 8%, 0) scale(1.12); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes drift-b {
+  0%   { transform: translate3d(0, 0, 0) scale(1.05); }
+  25%  { transform: translate3d(24%, -14%, 0) scale(0.9); }
+  50%  { transform: translate3d(-12%, -28%, 0) scale(1.15); }
+  75%  { transform: translate3d(-26%, -6%, 0) scale(0.95); }
+  100% { transform: translate3d(0, 0, 0) scale(1.05); }
+}
+@keyframes drift-c {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  25%  { transform: translate3d(20%, 22%, 0) scale(1.14); }
+  50%  { transform: translate3d(-24%, 10%, 0) scale(0.9); }
+  75%  { transform: translate3d(-8%, -22%, 0) scale(1.1); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.95; }
+}
+
+/* ---- Shimmering skeleton (loading placeholders) ---- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgb(var(--cream-200));
+  border-radius: 12px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* ---- Pulsing "live" dot ---- */
+.live-dot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes live-ping {
+  0% { transform: scale(1); opacity: 0.55; }
+  75%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* ---- Bull / Bear trend mascot (image-based) ---- */
+.mascot-in {
+  animation: mascot-in 520ms ease-out both;
+}
+.mascot-bull {
+  transform-origin: 50% 82%;
+  animation: bull-bob 3.4s ease-in-out infinite;
+}
+.mascot-bear {
+  transform-origin: 50% 85%;
+  animation: bear-sway 4s ease-in-out infinite;
+}
+@keyframes mascot-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes bull-bob {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-4px) rotate(1.5deg); }
+}
+@keyframes bear-sway {
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  50% { transform: rotate(3deg) translateY(-2px); }
+}
+
+/* Skip rendering/painting off-screen sections for smoother scrolling.
+   Visually identical; the browser just defers work until they're near view. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
+
+/* Soft, light scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d9d2c0;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c8c0aa;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+  /* Keep the colors, drop the motion. */
+  .aurora-blob,
+  .skeleton::after,
+  .live-dot::before,
+  .mascot-bull,
+  .mascot-bear {
+    animation: none !important;
+  }
+}

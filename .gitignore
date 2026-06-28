@@ -1,0 +1,31 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---- Node / frontend build ----
+node_modules/
+web/frontend/dist/
+*.local
+
+# ---- Local database (production uses Postgres via DATABASE_URL) ----
+*.db
+web/backend/game.db
+
+# ---- Secrets / environment ----
+.env
+*.env
+.env.*
+
+# ---- OS / editor junk ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ---- Local tool config (not needed in a public repo) ----
+.claude/

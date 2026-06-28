@@ -1,0 +1,11 @@
+# Streamlit theme for the Stock Market Investment Club app.
+# This sets the base dark theme + orange accent. Fine-tuning is done with
+# the custom CSS inside app.py (see inject_css()).
+
+[theme]
+base = "dark"
+primaryColor = "#ff6b2c"
+backgroundColor = "#0c0c0f"
+secondaryBackgroundColor = "#16161a"
+textColor = "#ededf2"
+font = "sans serif"

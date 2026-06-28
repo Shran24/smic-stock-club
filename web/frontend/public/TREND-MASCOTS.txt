@@ -1,0 +1,19 @@
+Bull / Bear "Market Mood" mascots
+=================================
+
+Drop two images in THIS folder to enable the animated trend mascots:
+
+    bull.png   -> shown for an UPWARD trend  (gently bobs)
+    bear.png   -> shown for a DOWNWARD trend (gently sways)
+
+Recommended:
+  - PNG with a TRANSPARENT background (so it sits cleanly on the tinted card)
+  - Roughly square, ~256-512px
+  - A detailed 3D-rendered bull and bear look great here
+
+Until both files exist, the Trend & Technical section just shows the plain
+"Overall trend: ..." text — nothing breaks.
+
+(Reminder: Windows may hide file extensions. If your file shows as
+"bull.png" but the app can't find it, it may really be "bull.png.png" or
+".jpg". Turn on View > Show > File name extensions to check.)
