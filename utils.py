@@ -49,6 +49,25 @@ def _ttl_cache(func):
 # 1. DATA FETCHING
 # ---------------------------------------------------------------------------
 
+# A browser-impersonating HTTP session helps bypass Yahoo's blocking of
+# company-info requests from cloud-server IPs (e.g. Render). Falls back to a
+# normal session if curl_cffi isn't available.
+try:
+    from curl_cffi import requests as _cffi_requests
+    _CFFI_SESSION = _cffi_requests.Session(impersonate="chrome")
+except Exception:
+    _CFFI_SESSION = None
+
+
+def _make_ticker(ticker: str):
+    if _CFFI_SESSION is not None:
+        try:
+            return yf.Ticker(ticker, session=_CFFI_SESSION)
+        except Exception:
+            pass
+    return yf.Ticker(ticker)
+
+
 @_ttl_cache
 def fetch_stock(ticker: str):
     """
@@ -72,18 +91,23 @@ def fetch_stock(ticker: str):
         return result
 
     try:
-        stock = yf.Ticker(ticker)
+        stock = _make_ticker(ticker)
 
         # Pull 5 years of daily price history so the chart can offer
         # 1M / 3M / 6M / 1Y / 5Y ranges (the frontend slices client-side).
         history = stock.history(period="5y", interval="1d")
 
-        # Pull the company info dictionary (PE ratio, market cap, etc.).
-        # .info can occasionally fail, so we guard it separately.
-        try:
-            info = stock.info or {}
-        except Exception:
-            info = {}
+        # Company info (PE, market cap, etc.). Yahoo sometimes blocks this from
+        # cloud IPs, so try a couple of times before giving up.
+        info = {}
+        for _attempt in range(2):
+            try:
+                info = stock.info or {}
+            except Exception:
+                info = {}
+            if info.get("marketCap") is not None or info.get("trailingPE") is not None or info.get("shortName"):
+                break
+            stock = _make_ticker(ticker)  # fresh attempt
 
         # A ticker is only "valid" if we actually got price history back.
         if history is None or history.empty:
