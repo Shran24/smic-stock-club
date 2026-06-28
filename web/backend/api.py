@@ -43,7 +43,7 @@ import recommender    # noqa: E402
 from db import Base, engine, get_db          # noqa: E402
 import models                                # noqa: E402,F401  (registers tables)
 import game                                  # noqa: E402
-from auth import router as auth_router, current_user, is_admin, hash_password  # noqa: E402
+from auth import router as auth_router, current_user, is_admin, hash_password, verify_password  # noqa: E402
 from models import User, Holding, Transaction  # noqa: E402
 from sqlalchemy import func                   # noqa: E402
 
@@ -358,6 +358,25 @@ def api_trade(payload: TradeIn, user=Depends(current_user), db: Session = Depend
 @app.get("/api/leaderboard")
 def api_leaderboard(db: Session = Depends(get_db)):
     return game.leaderboard(db)
+
+
+class ChangePwIn(BaseModel):
+    currentPassword: str
+    newPassword: str
+
+
+@app.post("/api/change-password")
+def api_change_password(body: ChangePwIn, user=Depends(current_user), db: Session = Depends(get_db)):
+    """Self-service: a logged-in member changes their own password."""
+    if not user:
+        raise HTTPException(401, "Log in first.")
+    if not verify_password(body.currentPassword, user.password_hash or ""):
+        raise HTTPException(400, "Your current password is incorrect.")
+    if len(body.newPassword) < 6:
+        raise HTTPException(400, "New password must be at least 6 characters.")
+    user.password_hash = hash_password(body.newPassword)
+    db.commit()
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------

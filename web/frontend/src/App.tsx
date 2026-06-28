@@ -18,6 +18,7 @@ import CompanyLogo from "./components/CompanyLogo";
 import TradePanel from "./components/TradePanel";
 import Portfolio from "./components/Portfolio";
 import Leaderboard from "./components/Leaderboard";
+import ChangePasswordModal from "./components/ChangePasswordModal";
 import { CountUp, DashboardSkeleton } from "./components/anim";
 import { useAuth } from "./AuthContext";
 
@@ -484,6 +485,7 @@ type TabId = (typeof TABS)[number]["id"];
 // Login / logout control shown in the tab bar.
 function AuthControl() {
   const { me, doLogout, openLogin } = useAuth();
+  const [showChangePw, setShowChangePw] = useState(false);
   if (me?.authenticated) {
     return (
       <div className="flex items-center gap-3">
@@ -491,11 +493,18 @@ function AuthControl() {
           Hi, <span className="font-bold text-ink">{me.name}</span> · {fmtCurrency(me.cash ?? 0)}
         </span>
         <button
+          onClick={() => setShowChangePw(true)}
+          className="hidden cursor-pointer rounded-xl border border-line bg-surface px-4 py-2 text-sm font-bold text-ink-muted transition hover:text-ink sm:inline-block"
+        >
+          Change password
+        </button>
+        <button
           onClick={doLogout}
           className="cursor-pointer rounded-xl border border-line bg-surface px-4 py-2 text-sm font-bold text-ink-muted transition hover:text-ink"
         >
           Log out
         </button>
+        {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
       </div>
     );
   }

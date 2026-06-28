@@ -67,3 +67,7 @@ export async function deleteUser(name: string): Promise<{ removed: string }> {
 // Admin only — reset a player's password (for forgotten logins).
 export const resetPassword = (name: string, password: string) =>
   postJSON<{ reset: string }>(`/api/admin/users/${encodeURIComponent(name)}/reset-password`, { password });
+
+// Self-service — a logged-in member changes their own password.
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  postJSON<{ ok: boolean }>("/api/change-password", { currentPassword, newPassword });
