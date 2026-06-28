@@ -242,7 +242,15 @@ function AnalyzeView() {
     setLoading(true);
     setError(null);
     try {
-      const a = await fetchAnalysis(ticker);
+      let a;
+      try {
+        a = await fetchAnalysis(ticker);
+      } catch {
+        // Transient first-call hiccups happen (data provider warming up) —
+        // retry once after a short pause before surfacing an error.
+        await new Promise((r) => setTimeout(r, 700));
+        a = await fetchAnalysis(ticker);
+      }
       setData(a);
     } catch (e) {
       setData(null);

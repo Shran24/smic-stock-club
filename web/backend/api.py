@@ -252,6 +252,28 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/_diag")
+def api_diag():
+    """Temporary: diagnose the Finnhub fundamentals fallback (no key is leaked)."""
+    import urllib.request as _ur
+    import json as _js
+    key = os.environ.get("FINNHUB_API_KEY")
+    out = {"finnhubKeyPresent": bool(key), "keyLength": len(key) if key else 0}
+    if key:
+        try:
+            with _ur.urlopen(f"https://finnhub.io/api/v1/stock/profile2?symbol=AAPL&token={key}", timeout=10) as r:
+                body = _js.loads(r.read())
+            out["profile2Status"] = "ok"
+            out["profile2MarketCap"] = body.get("marketCapitalization")
+        except Exception as e:
+            out["profile2Status"] = f"{type(e).__name__}: {str(e)[:160]}"
+        try:
+            out["mappedAAPL"] = utils.fundamentals_from_finnhub("AAPL")
+        except Exception as e:
+            out["mapError"] = str(e)[:160]
+    return out
+
+
 @app.get("/api/analyze/{ticker}")
 def analyze(ticker: str):
     payload = build_analysis(ticker)

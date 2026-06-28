@@ -171,7 +171,13 @@ def fetch_stock(ticker: str):
 
         # Pull 5 years of daily price history so the chart can offer
         # 1M / 3M / 6M / 1Y / 5Y ranges (the frontend slices client-side).
+        # yfinance's first call sometimes fails to get Yahoo's auth crumb, so
+        # retry once with a fresh ticker before giving up (fixes "first search
+        # errors, retry works").
         history = stock.history(period="5y", interval="1d")
+        if history is None or history.empty:
+            stock = _make_ticker(ticker)
+            history = stock.history(period="5y", interval="1d")
 
         # Company info (PE, market cap, etc.). Yahoo sometimes blocks this from
         # cloud IPs, so try a couple of times before giving up.
