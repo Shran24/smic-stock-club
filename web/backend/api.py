@@ -252,6 +252,27 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/_diag2")
+def api_diag2():
+    """Temporary: inspect Finnhub metric field names for forward-PE / FCF."""
+    import urllib.request as _ur
+    import json as _js
+    key = os.environ.get("FINNHUB_API_KEY")
+    if not key:
+        return {"key": False}
+    try:
+        with _ur.urlopen(f"https://finnhub.io/api/v1/stock/metric?symbol=AAPL&metric=all&token={key}", timeout=10) as r:
+            m = _js.loads(r.read()).get("metric", {})
+        return {
+            "forward": {k: m[k] for k in m if "forward" in k.lower()},
+            "cash": {k: m[k] for k in m if "cash" in k.lower() or "fcf" in k.lower()},
+            "pe": {k: m[k] for k in m if "pe" in k.lower()},
+            "allKeys": sorted(m.keys()),
+        }
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {str(e)[:160]}"}
+
+
 @app.get("/api/analyze/{ticker}")
 def analyze(ticker: str):
     payload = build_analysis(ticker)
