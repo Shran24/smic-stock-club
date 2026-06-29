@@ -118,6 +118,7 @@ def fundamentals_from_finnhub(ticker: str) -> dict:
         # ratios/values that match yfinance units directly
         out["trailingPE"] = g("peTTM", "peExclExtraTTM")
         out["trailingEps"] = g("epsTTM", "epsInclExtraItemsTTM", "epsBasicExclExtraItemsTTM")
+        out["forwardPE"] = g("forwardPE")
         out["beta"] = g("beta")
         out["fiftyTwoWeekHigh"] = g("52WeekHigh")
         out["fiftyTwoWeekLow"] = g("52WeekLow")
@@ -138,6 +139,11 @@ def fundamentals_from_finnhub(ticker: str) -> dict:
         dte = g("totalDebt/totalEquityQuarterly", "totalDebt/totalEquityAnnual")
         if dte is not None:
             out["debtToEquity"] = dte * 100.0
+        # Finnhub has no absolute FCF, but price/FCF-per-share (pfcf) lets us
+        # derive it: FCF = marketCap / pfcf.
+        pfcf = g("pfcfShareTTM", "pfcfShareAnnual")
+        if pfcf and out.get("marketCap"):
+            out["freeCashflow"] = out["marketCap"] / pfcf
     except Exception:
         pass
 
