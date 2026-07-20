@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
+import { searchSymbols } from "../api";
+import type { SymbolMatch } from "../types";
 
 const SAMPLES = ["AAPL", "MSFT", "TSLA", "NVDA", "AMZN", "GOOGL", "META", "KO"];
 
@@ -20,20 +22,65 @@ export default function SearchBar({
   onSearch: (ticker: string) => void;
 }) {
   const [value, setValue] = useState(initial);
+  const [matches, setMatches] = useState<SymbolMatch[]>([]);
+  const [open, setOpen] = useState(false);
+  // Set when we change the input programmatically, so we don't re-open the
+  // dropdown after picking a suggestion / sample.
+  const skipSearch = useRef(false);
+
+  useEffect(() => {
+    if (skipSearch.current) {
+      skipSearch.current = false;
+      return;
+    }
+    const q = value.trim();
+    if (q.length < 2) {
+      setMatches([]);
+      setOpen(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const found = await searchSymbols(q);
+        setMatches(found);
+        setOpen(found.length > 0);
+      } catch {
+        setMatches([]);
+        setOpen(false);
+      }
+    }, 250); // debounce typing
+    return () => clearTimeout(timer);
+  }, [value]);
 
   const submit = () => {
-    const t = value.trim().toUpperCase();
-    if (t) onSearch(t);
+    const t = value.trim();
+    if (!t) return;
+    setOpen(false);
+    onSearch(t); // backend resolves company names -> ticker
+  };
+
+  const pick = (m: SymbolMatch) => {
+    skipSearch.current = true;
+    setValue(m.symbol);
+    setMatches([]);
+    setOpen(false);
+    onSearch(m.symbol);
+  };
+
+  const quickPick = (t: string) => {
+    skipSearch.current = true;
+    setValue(t);
+    setMatches([]);
+    setOpen(false);
+    onSearch(t);
   };
 
   const surprise = () => {
-    // Pick a random ticker different from the current one.
-    let pick = value.trim().toUpperCase();
-    while (pick === value.trim().toUpperCase()) {
-      pick = SURPRISE_POOL[Math.floor(Math.random() * SURPRISE_POOL.length)];
+    let pickTicker = value.trim().toUpperCase();
+    while (pickTicker === value.trim().toUpperCase()) {
+      pickTicker = SURPRISE_POOL[Math.floor(Math.random() * SURPRISE_POOL.length)];
     }
-    setValue(pick);
-    onSearch(pick);
+    quickPick(pickTicker);
   };
 
   return (
@@ -46,11 +93,36 @@ export default function SearchBar({
           <input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
-            placeholder="Enter a ticker, e.g. AAPL"
-            className="num w-full rounded-xl2 border border-line bg-surface py-3.5 pl-12 pr-3 font-bold uppercase tracking-wide text-ink shadow-card outline-none transition placeholder:font-medium placeholder:normal-case placeholder:text-ink-muted focus:border-forest-500 focus:ring-2 focus:ring-forest-500/20"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submit();
+              if (e.key === "Escape") setOpen(false);
+            }}
+            onFocus={() => matches.length > 0 && setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            placeholder="Search a company or ticker — e.g. Apple or AAPL"
+            className="w-full rounded-xl2 border border-line bg-surface py-3.5 pl-12 pr-3 font-bold tracking-wide text-ink shadow-card outline-none transition placeholder:font-medium placeholder:text-ink-muted focus:border-forest-500 focus:ring-2 focus:ring-forest-500/20"
           />
+
+          {open && matches.length > 0 && (
+            <ul className="absolute z-40 mt-2 max-h-72 w-full overflow-auto rounded-xl2 border border-line bg-surface py-1 shadow-cardhover">
+              {matches.map((m) => (
+                <li key={m.symbol}>
+                  <button
+                    onMouseDown={(e) => e.preventDefault()} // keep focus so onBlur doesn't cancel
+                    onClick={() => pick(m)}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition hover:bg-panel"
+                  >
+                    <span className="truncate text-sm font-semibold text-ink">{m.name}</span>
+                    <span className="num flex-none rounded-md bg-forest-tint px-2 py-0.5 text-xs font-bold text-forest-700 dark:text-forest-400">
+                      {m.symbol}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
+
         <button
           onClick={submit}
           disabled={loading}
@@ -60,15 +132,13 @@ export default function SearchBar({
           {loading ? "Analyzing…" : "Analyze"}
         </button>
       </div>
+
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-ink-muted">Try:</span>
         {SAMPLES.map((s) => (
           <button
             key={s}
-            onClick={() => {
-              setValue(s);
-              onSearch(s);
-            }}
+            onClick={() => quickPick(s)}
             className="num cursor-pointer rounded-lg border border-line bg-panel px-2.5 py-1 text-xs font-bold text-ink-muted transition hover:border-forest-500/50 hover:bg-forest-tint hover:text-forest-800"
           >
             {s}
@@ -76,7 +146,7 @@ export default function SearchBar({
         ))}
         <button
           onClick={surprise}
-          className="ml-1 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gold-200 bg-gold-100 px-2.5 py-1 text-xs font-bold text-gold-700 transition hover:border-gold-400"
+          className="ml-1 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gold-200 bg-gold-100 px-2.5 py-1 text-xs font-bold text-gold-700 transition hover:border-gold-400 dark:text-gold-400"
         >
           <Icon name="shuffle" size={13} />
           Surprise me

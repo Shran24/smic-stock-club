@@ -455,8 +455,8 @@ function CompareView() {
               next[i] = e.target.value;
               setInputs(next);
             }}
-            placeholder={`Stock ${i + 1}`}
-            className="num rounded-xl2 border border-line bg-surface px-4 py-3 font-bold uppercase text-ink shadow-card outline-none transition focus:border-forest-500 focus:ring-2 focus:ring-forest-500/20"
+            placeholder={`Company or ticker ${i + 1}`}
+            className="rounded-xl2 border border-line bg-surface px-4 py-3 font-bold text-ink shadow-card outline-none transition focus:border-forest-500 focus:ring-2 focus:ring-forest-500/20"
           />
         ))}
       </div>

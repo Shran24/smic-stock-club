@@ -70,6 +70,12 @@ export interface Analysis {
   chart: ChartData;
 }
 
+// Autocomplete match when searching by company name or ticker.
+export interface SymbolMatch {
+  symbol: string;
+  name: string;
+}
+
 // --- Trading game ---
 
 export interface Me {

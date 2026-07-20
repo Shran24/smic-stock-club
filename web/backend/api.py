@@ -252,14 +252,26 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/search")
+def api_search(q: str = ""):
+    """Autocomplete: find tickers by company name or symbol."""
+    return utils.search_symbols(q, limit=8)
+
+
 @app.get("/api/analyze/{ticker}")
 def analyze(ticker: str):
+    # Fast path: treat the input as a ticker.
     payload = build_analysis(ticker)
+    # Fallback: the user probably typed a company name ("Apple") — look it up.
+    if payload is None:
+        resolved = utils.resolve_symbol(ticker)
+        if resolved and resolved.upper() != ticker.strip().upper():
+            payload = build_analysis(resolved)
     if payload is None:
         raise HTTPException(
             status_code=404,
-            detail=f"Could not find data for '{ticker.upper()}'. "
-                   "Please check the symbol and try again (e.g. AAPL, MSFT, TSLA).",
+            detail=f"Could not find a stock for '{ticker}'. "
+                   "Try a company name (e.g. Apple) or a ticker (e.g. AAPL).",
         )
     return payload
 
@@ -273,6 +285,11 @@ def compare(tickers: str = ""):
     rows, missing = [], []
     for sym in symbols:
         row = build_compare_row(sym)
+        if row is None:
+            # Allow company names here too (e.g. "Apple" -> AAPL).
+            resolved = utils.resolve_symbol(sym)
+            if resolved and resolved.upper() != sym:
+                row = build_compare_row(resolved)
         (rows if row else missing).append(row if row else sym)
 
     return {"rows": rows, "missing": missing}

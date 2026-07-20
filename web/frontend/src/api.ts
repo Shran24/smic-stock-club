@@ -2,7 +2,7 @@
 // vite.config.ts); in production the same FastAPI process serves both. We send
 // credentials so the session cookie (login) rides along.
 
-import type { Analysis, CompareRow, Me, Portfolio, LeaderRow } from "./types";
+import type { Analysis, CompareRow, Me, Portfolio, LeaderRow, SymbolMatch } from "./types";
 
 async function getJSON<T>(url: string): Promise<T> {
   const res = await fetch(url, { credentials: "include" });
@@ -34,6 +34,10 @@ async function errorDetail(res: Response): Promise<string> {
 // --- Stock data ---
 export const fetchAnalysis = (ticker: string) =>
   getJSON<Analysis>(`/api/analyze/${encodeURIComponent(ticker)}`);
+
+// Autocomplete: search by company name or ticker.
+export const searchSymbols = (q: string) =>
+  getJSON<SymbolMatch[]>(`/api/search?q=${encodeURIComponent(q)}`);
 
 export const fetchComparison = (tickers: string[]) =>
   getJSON<{ rows: CompareRow[]; missing: string[] }>(

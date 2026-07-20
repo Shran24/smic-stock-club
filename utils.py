@@ -74,6 +74,7 @@ def _make_ticker(ticker: str):
 # pull fundamentals from Finnhub and map them into the SAME keys/units yfinance
 # uses, so the rest of the app (recommender, API) needs no changes.
 import json as _json
+import urllib.parse as _urlparse
 import urllib.request as _urlreq
 
 _FINNHUB_KEY = os.environ.get("FINNHUB_API_KEY")
@@ -83,6 +84,57 @@ def _finnhub(path: str):
     url = f"https://finnhub.io/api/v1/{path}&token={_FINNHUB_KEY}"
     with _urlreq.urlopen(url, timeout=10) as resp:
         return _json.loads(resp.read())
+
+
+def search_symbols(query: str, limit: int = 8):
+    """
+    Look up tickers by COMPANY NAME or symbol (e.g. "Apple" -> AAPL).
+    Uses Finnhub's symbol search. Returns [{"symbol": ..., "name": ...}, ...].
+    Returns [] if no API key or nothing matches.
+    """
+    q = (query or "").strip()
+    if not _FINNHUB_KEY or len(q) < 1:
+        return []
+    try:
+        data = _finnhub(f"search?q={_urlparse.quote(q)}")
+    except Exception:
+        return []
+
+    ql = q.lower()
+    out = []
+    for r in (data.get("result") or []):
+        sym = (r.get("symbol") or "").strip()
+        name = (r.get("description") or "").strip()
+        typ = (r.get("type") or "").strip()
+        if not sym or not name:
+            continue
+        if typ and typ != "Common Stock":      # skip ETFs/bonds/warrants
+            continue
+        if "." in sym or not sym.isalnum():    # skip foreign/odd listings
+            continue
+        out.append({"symbol": sym.upper(), "name": name.title()})
+
+    # Rank: exact ticker match first, then names that start with the query,
+    # then shorter (usually primary) symbols.
+    def score(item):
+        s, n = item["symbol"].lower(), item["name"].lower()
+        return (0 if s == ql else 1, 0 if n.startswith(ql) else 1, len(item["symbol"]))
+
+    out.sort(key=score)
+
+    seen, deduped = set(), []
+    for item in out:
+        if item["symbol"] in seen:
+            continue
+        seen.add(item["symbol"])
+        deduped.append(item)
+    return deduped[:limit]
+
+
+def resolve_symbol(query: str):
+    """Best-guess ticker for a company name (or None)."""
+    matches = search_symbols(query, limit=1)
+    return matches[0]["symbol"] if matches else None
 
 
 def fundamentals_from_finnhub(ticker: str) -> dict:
